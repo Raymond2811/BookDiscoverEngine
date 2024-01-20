@@ -24,7 +24,7 @@ const SearchBooks = () => {
     return () => saveBookIds(savedBookIds);
   });
 
-  const [saveBookMutation] = useMutation(SAVE_BOOK);
+  const [saveBook] = useMutation(SAVE_BOOK);
 
   const handleFormSubmit = async (event) => {
     event.preventDefault();
@@ -66,8 +66,8 @@ const SearchBooks = () => {
     }
 
     try {
-      const { data } = await saveBookMutation({
-        variables: { input: bookToSave }
+      const { data } = await saveBook({
+        variables: { ...bookToSave }
       });
 
       if (!data.saveBook) {

@@ -3,9 +3,9 @@ const { signToken } = require('../utils/auth');
 
 const resolvers = {
   Query: {
-    me: async (_root, { user = null, params }) => {
+    me: async (parent, { user = null }, context) => {
       const foundUser = await User.findOne({
-        $or: [{ _id: user ? user._id : params.id }, { username: params.username }],
+        _id: context.user._id
       });
 
       if (!foundUser) {
@@ -16,7 +16,21 @@ const resolvers = {
     },
   },
   Mutation: {
-    addUser: async (_root, {username, email, password}) => {
+    login: async (parent, {email, password}) => {
+      const user = await User.findOne({ email });
+      if(!user) {
+        throw new Error("Can't find this user");
+      }
+
+      const correctPw = await user.isCorrectPassword(password);
+      if (!correctPw){
+        throw new Error('Wrong password!');
+      }
+
+      const token = signToken(user);
+      return { token, user };
+    },
+    addUser: async (parent, {username, email, password}) => {
       const user = await User.create({ username, email, password });
 
       if(!user){
@@ -26,21 +40,7 @@ const resolvers = {
       const token = signToken(user);
       return { token, user };
     },
-    login: async (_root, {email, password}) => {
-      const user = await User.findOne({ $or: [{ username }, { email }] });
-      if(!user) {
-        throw new Error("Can't find this user");
-      }
-
-      const correctPw = await user.isCorrectPassword({password});
-      if (!correctPw){
-        throw new Error('Wrong password!');
-      }
-
-      const token = signToken(user);
-      return { token, user };
-    },
-    saveBook: async (_root, { user, authors, description, title, bookId, image, link }) => {
+    saveBook: async (parent, { authors, description, title, bookId, image, link }, {user}) => {
       try{
         const updatedUser = await User.findOneAndUpdate(
           { _id: user._id },
@@ -53,7 +53,7 @@ const resolvers = {
         throw new Error(err.message);
       }
     },
-    removeBook: async (_root, { user, bookId }) => {
+    removeBook: async (parent, { bookId }, { user }) => {
       const updatedUser = await User.findOneAndUpdate(
         {_id: user._id},
         { $pull: { savedBooks: { bookId } } },
